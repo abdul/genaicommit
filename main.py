@@ -111,9 +111,9 @@ def create_chat_completion(api_key, json_data, timeout, proxy=None):
 
 def sanitize_message(message):
     # Ensure message follows the "<type>(<optional scope>): <commit message>" format
-    if not message.startswith(":"):
-        return message.strip().replace('\n', '').replace('\r', '')
-    return message
+    if message.startswith(":"):
+        return message[1:].strip()
+    return message.strip().replace('\n', '').replace('\r', '')
 
 
 def deduplicate_messages(messages):
@@ -121,15 +121,15 @@ def deduplicate_messages(messages):
 
 
 def generate_prompt(locale, max_length, commit_type, commit_types, commit_type_formats):
-    return (
-        f"Generate a concise git commit message written in present tense for the following code diff with the given specifications below:\n"
-        f"Message language: {locale}\n"
-        f"Commit message must be a maximum of {max_length} characters.\n"
-        f"Exclude anything unnecessary such as translation. Your entire response will be passed directly into git commit.\n"
-        f"Choose a type from the type-to-description JSON below that best describes the git diff:\n"
-        f"{json.dumps(commit_types, indent=2)}\n"
-        f'The output response must be in format:\n: "{commit_type_formats[commit_type]}"'
-    )
+    return "\n".join([
+        'Generate a concise git commit message written in present tense for the following code diff with the given specifications below:',
+        f'Message language: {locale}',
+        f'Commit message must be a maximum of {max_length} characters.',
+        'Exclude anything unnecessary such as translation. Your entire response will be passed directly into git commit.',
+        commit_types[commit_type],
+        "The output response must be in format:",
+        commit_type_formats[commit_type]
+    ])
 
 
 def generate_commit_message(api_key, model, locale, diff, completions, max_length, commit_type, commit_types, commit_type_formats, timeout, proxy=None):
@@ -151,7 +151,7 @@ def generate_commit_message(api_key, model, locale, diff, completions, max_lengt
         }
         completion = create_chat_completion(api_key, json_data, timeout, proxy)
         return deduplicate_messages(
-            sanitize_message(choice["message"]["content"]) for choice in completion["choices"] if choice["message"]["content"]
+            sanitize_message(choice["message"]["content"]) for choice in completion["choices"] if "message" in choice and "content" in choice["message"]
         )
     except KnownError as e:
         raise KnownError(f"Failed to generate commit message: {e}")
@@ -188,6 +188,18 @@ def main():
         print(f"{Fore.GREEN}Configuration set: {Fore.YELLOW}{key}={value}{Style.RESET_ALL}")
         sys.exit(0)
 
+    completions = 1
+    if '-g' in sys.argv or '--generate' in sys.argv:
+        try:
+            if '-g' in sys.argv:
+                index = sys.argv.index('-g') + 1
+            else:
+                index = sys.argv.index('--generate') + 1
+            completions = int(sys.argv[index])
+        except (ValueError, IndexError):
+            print(f"{Fore.RED}Error: Please provide a valid number of generations with the -g or --generate flag.{Style.RESET_ALL}")
+            sys.exit(1)
+
     settings = config['SETTINGS']
 
     max_length = int(settings['max-length'])
@@ -201,20 +213,24 @@ def main():
 
     # Define commit types and formats
     commit_types = {
-        'docs': 'Documentation only changes',
-        'style': 'Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)',
-        'refactor': 'A code change that neither fixes a bug nor adds a feature',
-        'perf': 'A code change that improves performance',
-        'test': 'Adding missing tests or correcting existing tests',
-        'build': 'Changes that affect the build system or external dependencies',
-        'ci': 'Changes to our CI configuration files and scripts',
-        'chore': "Other changes that don't modify src or test files",
-        'revert': 'Reverts a previous commit',
-        'feat': 'A new feature',
-        'fix': 'A bug fix'
+        '': '',
+        'conventional': 'Choose a type from the type-to-description JSON below that best describes the git diff:\n' + json.dumps({
+            'docs': 'Documentation only changes',
+            'style': 'Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)',
+            'refactor': 'A code change that neither fixes a bug nor adds a feature',
+            'perf': 'A code change that improves performance',
+            'test': 'Adding missing tests or correcting existing tests',
+            'build': 'Changes that affect the build system or external dependencies',
+            'ci': 'Changes to our CI configuration files and scripts',
+            'chore': "Other changes that don't modify src or test files",
+            'revert': 'Reverts a previous commit',
+            'feat': 'A new feature',
+            'fix': 'A bug fix'
+        }, indent=2),
     }
 
     commit_type_formats = {
+        '': '<commit message>',
         'conventional': '<type>(<optional scope>): <commit message>',
     }
 
@@ -225,14 +241,14 @@ def main():
         print(f"{Fore.RED}{e}{Style.RESET_ALL}")
         sys.exit(1)
 
-    # Generate a commit message using the OpenAI model specified in config
+    # Generate commit messages using the OpenAI model specified in config
     try:
         commit_messages = generate_commit_message(
             api_key=api_key,
             model=settings['model'],
             locale=locale,
             diff=diff,
-            completions=1,
+            completions=completions,
             max_length=max_length,
             commit_type='conventional',
             commit_types=commit_types,
@@ -240,7 +256,18 @@ def main():
             timeout=30  # Timeout in seconds, adjust as necessary
         )
 
-        commit_message = commit_messages[0]
+        if len(commit_messages) > 1:
+            questions = [
+                inquirer.List(
+                    'selected_message',
+                    message="Select a commit message:",
+                    choices=commit_messages,
+                ),
+            ]
+            answers = inquirer.prompt(questions)
+            commit_message = answers['selected_message']
+        else:
+            commit_message = commit_messages[0]
     except KnownError as e:
         print(f"{Fore.RED}Error generating commit message: {e}{Style.RESET_ALL}")
         sys.exit(1)
