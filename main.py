@@ -158,11 +158,25 @@ def is_git_repo():
 def get_git_diff():
     try:
         result = subprocess.run(['git', 'diff', '--cached'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
-        return result.stdout
+        diff = result.stdout.strip()
+        if not diff:
+            raise KnownError("No staged changes found. Please stage your changes using `git add <files>`.")
+        return diff
     except subprocess.CalledProcessError as e:
         raise KnownError(f"Error getting git diff: {e.stderr}")
 
+def print_help():
+    print(f"{Fore.CYAN}Usage: main.py [options]{Style.RESET_ALL}")
+    print("Options:")
+    print("  -g, --generate N       Generate N commit messages (default is 1).")
+    print("  config set KEY=VALUE   Set a configuration key to a value.")
+    print("  -h, --help             Show this help message and exit.")
+
 def main():
+    if '-h' in sys.argv or '--help' in sys.argv:
+        print_help()
+        sys.exit(0)
+
     print(f"{Fore.GREEN}Starting generation...{Style.RESET_ALL}")
     if not is_git_repo():
         print(f"{Fore.RED}Error: This script must be run inside a git repository.{Style.RESET_ALL}")
@@ -248,6 +262,9 @@ def main():
             timeout=30  # Timeout in seconds, adjust as necessary
         )
 
+        if len(commit_messages) < completions:
+            print(f"{Fore.YELLOW}Warning: Only received {len(commit_messages)} messages out of the requested {completions}.{Style.RESET_ALL}")
+
         if len(commit_messages) > 1:
             questions = [
                 inquirer.List(
@@ -264,15 +281,15 @@ def main():
         print(f"{Fore.RED}Error generating commit message: {e}{Style.RESET_ALL}")
         sys.exit(1)
 
-    # Show the generated commit message
-    print(f"\n{Fore.CYAN}Generated commit message:{Style.RESET_ALL}\n{commit_message}\n")
-
     # Optionally use devmoji to add emojis to the commit message
     if settings['devmoji'] == 'true':
         devmoji_command = f'echo "{commit_message}" | devmoji --commit'
-        subprocess.run(devmoji_command, shell=True)
+        result = subprocess.run(devmoji_command, shell=True, capture_output=True, text=True)
+        commit_message = result.stdout.strip()
 
-    # Show the generated commit message and ask for approval
+    # Show the selected commit message and ask for approval
+    print(f"\n{Fore.CYAN}Selected commit message:{Style.RESET_ALL}\n{commit_message}\n")
+
     approval_question = [
         inquirer.Confirm('approved', message=f"{Fore.GREEN}Do you approve this commit message?{Style.RESET_ALL}", default=True),
     ]
