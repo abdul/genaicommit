@@ -46,10 +46,13 @@ else:
         'type': 'conventional',
         'max-length': '50',
         'locale': 'en',
-        'OPENAI_API_KEY': ''
+        'OPENAI_API_KEY': '',
+        'OPENAI_BASE_URL': 'https://api.openai.com/v1'
     }
     with open(CONFIG_FILE, 'w') as configfile:
         config.write(configfile)
+def get_openai_base_url():
+    return config['SETTINGS'].get('OPENAI_BASE_URL', 'https://api.openai.com/v1')
 
 def save_config():
     with open(CONFIG_FILE, 'w') as configfile:
@@ -64,9 +67,9 @@ def decrypt_api_key(encrypted_api_key):
 class KnownError(Exception):
     pass
 
-def https_post(host, path, headers, data, timeout, proxy=None):
+def https_post(base_url, path, headers, data, timeout, proxy=None):
     post_data = json.dumps(data).encode('utf-8')
-    url = f"https://{host}{path}"
+    url = f"{base_url}{path}"
     req = urllib.request.Request(url, data=post_data, headers=headers, method='POST')
 
     if proxy:
@@ -89,8 +92,9 @@ def https_post(host, path, headers, data, timeout, proxy=None):
 
 def create_chat_completion(api_key, json_data, timeout, proxy=None):
     headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
-    path = '/v1/chat/completions'
-    response, data = https_post('api.openai.com', path, headers, json_data, timeout, proxy)
+    base_url = get_openai_base_url()
+    path = '/chat/completions'
+    response, data = https_post(base_url, path, headers, json_data, timeout, proxy)
 
     if not (200 <= response.status < 300):
         error_message = f"OpenAI API Error: {response.status} - {response.reason}"
@@ -171,7 +175,6 @@ def print_help():
     print("  -g, --generate N       Generate N commit messages (default is 1).")
     print("  config set KEY=VALUE   Set a configuration key to a value.")
     print("  -h, --help             Show this help message and exit.")
-
 def main():
     if '-h' in sys.argv or '--help' in sys.argv:
         print_help()

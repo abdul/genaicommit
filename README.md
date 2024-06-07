@@ -40,12 +40,14 @@ You can configure `genaicommit` using the `config set` command. Here are the ava
 - `max-length`: The maximum length of the commit message (default: `50`).
 - `locale`: The language of the commit message (default: `en`).
 - `OPENAI_API_KEY`: Your OpenAI API key for authenticating API requests.
+- `OPENAI_BASE_URL`: The base URL for the OpenAI API (default: `https://api.openai.com/v1`).
 
 Example:
 
 ```bash
 genaicommit config set model=gpt-3.5-turbo
 genaicommit config set max-length=72
+genaicommit config set OPENAI_BASE_URL=http://localhost:11434/v1
 ```
 
 ## Usage
