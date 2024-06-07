@@ -1,5 +1,5 @@
 colorama==0.4.6
-inquirer==2.7.0
 python-inquirer==1.0.3
 tqdm==4.66.4
 cryptography==42.0.8
+blessed==1.20.0

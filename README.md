@@ -23,13 +23,12 @@ pip install genaicommit
 
 ## Setup
 
-1. Generate an OpenAI API key from the [OpenAI website](https://beta.openai.com/signup/).
-2. Configure `genaicommit` with your OpenAI API key:
+1. Generate an OpenAI API key from the [OpenAI website](https://openai.com/).
+2. Configure `genaicommit` with your OpenAI API key (not required if you have OPENAI_API_KEY environment variable set)
 
 ```bash
 genaicommit config set OPENAI_API_KEY=<your_api_key>
 ```
-
 ## Configuration
 
 You can configure `genaicommit` using the `config set` command. Here are the available configuration keys:
@@ -45,9 +44,9 @@ You can configure `genaicommit` using the `config set` command. Here are the ava
 Example:
 
 ```bash
-genaicommit config set model=gpt-3.5-turbo
-genaicommit config set max-length=72
-genaicommit config set OPENAI_BASE_URL=http://localhost:11434/v1
+genaicommit config set model=gpt-3.5-turbo (default: model)
+genaicommit config set max-length=72 (default: 50)
+genaicommit config set OPENAI_BASE_URL=http://localhost:11434/v1 (default https://api.openai.com/v1)
 ```
 
 ## Usage
@@ -62,24 +61,28 @@ git add <files>
 3. Run `genaicommit` to generate and approve a commit message:
 
 ```bash
-genaicommit -g 1
+genaicommit
 ```
+4. Run `genaicommit` with the `-g` option to generate multiple commit messages:
 
-### Options
-
-- `-g, --generate N`: Generate N commit messages (default is 1).
-- `config set KEY=VALUE`: Set a configuration key to a value.
-- `-h, --help`: Show the help message and exit.
+```bash
+genaicommit -g 5
+```
 
 ## Example
 
 ```bash
 cd your-git-repo
 git add .
-genaicommit -g 1
+genaicommit
 ```
-
 Follow the prompts to approve the commit message and commit the changes.
+
+### Options
+
+- `-g, --generate N`: Generate N commit messages (default is 1).
+- `config set KEY=VALUE`: Set a configuration key to a value.
+- `-h, --help`: Show the help message and exit.
 
 ## License
 
