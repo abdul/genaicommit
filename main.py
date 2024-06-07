@@ -51,23 +51,18 @@ else:
     with open(CONFIG_FILE, 'w') as configfile:
         config.write(configfile)
 
-
 def save_config():
     with open(CONFIG_FILE, 'w') as configfile:
         config.write(configfile)
 
-
 def encrypt_api_key(api_key):
     return cipher.encrypt(api_key.encode()).decode()
-
 
 def decrypt_api_key(encrypted_api_key):
     return cipher.decrypt(encrypted_api_key.encode()).decode()
 
-
 class KnownError(Exception):
     pass
-
 
 def https_post(host, path, headers, data, timeout, proxy=None):
     post_data = json.dumps(data).encode('utf-8')
@@ -92,7 +87,6 @@ def https_post(host, path, headers, data, timeout, proxy=None):
     except Exception as e:
         raise KnownError(f"Unknown Error: {e}")
 
-
 def create_chat_completion(api_key, json_data, timeout, proxy=None):
     headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
     path = '/v1/chat/completions'
@@ -108,17 +102,14 @@ def create_chat_completion(api_key, json_data, timeout, proxy=None):
 
     return json.loads(data)
 
-
 def sanitize_message(message):
     # Ensure message follows the "<type>(<optional scope>): <commit message>" format
     if message.startswith(":"):
         return message[1:].strip()
     return message.strip().replace('\n', '').replace('\r', '')
 
-
 def deduplicate_messages(messages):
     return list(set(messages))
-
 
 def generate_prompt(locale, max_length, commit_type, commit_types, commit_type_formats):
     return "\n".join([
@@ -130,7 +121,6 @@ def generate_prompt(locale, max_length, commit_type, commit_types, commit_type_f
         "The output response must be in format:",
         commit_type_formats[commit_type]
     ])
-
 
 def generate_commit_message(api_key, model, locale, diff, completions, max_length, commit_type, commit_types, commit_type_formats, timeout, proxy=None):
     try:
@@ -150,12 +140,13 @@ def generate_commit_message(api_key, model, locale, diff, completions, max_lengt
             "n": completions,
         }
         completion = create_chat_completion(api_key, json_data, timeout, proxy)
-        return deduplicate_messages(
-            sanitize_message(choice["message"]["content"]) for choice in completion["choices"] if "message" in choice and "content" in choice["message"]
-        )
+        return deduplicate_messages([
+            sanitize_message(choice["message"]["content"])
+            for choice in completion["choices"]
+            if "message" in choice and "content" in choice["message"]
+        ])
     except KnownError as e:
         raise KnownError(f"Failed to generate commit message: {e}")
-
 
 def is_git_repo():
     try:
@@ -164,7 +155,6 @@ def is_git_repo():
     except subprocess.CalledProcessError:
         return False
 
-
 def get_git_diff():
     try:
         result = subprocess.run(['git', 'diff', '--cached'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
@@ -172,8 +162,8 @@ def get_git_diff():
     except subprocess.CalledProcessError as e:
         raise KnownError(f"Error getting git diff: {e.stderr}")
 
-
 def main():
+    print(f"{Fore.GREEN}Starting generation...{Style.RESET_ALL}")
     if not is_git_repo():
         print(f"{Fore.RED}Error: This script must be run inside a git repository.{Style.RESET_ALL}")
         sys.exit(1)
@@ -235,6 +225,7 @@ def main():
     }
 
     # Get the git diff to send to OpenAI
+    print(f"{Fore.BLUE}Fetching git diff...{Style.RESET_ALL}")
     try:
         diff = get_git_diff()
     except KnownError as e:
@@ -242,6 +233,7 @@ def main():
         sys.exit(1)
 
     # Generate commit messages using the OpenAI model specified in config
+    print(f"{Fore.BLUE}Generating commit messages...{Style.RESET_ALL}")
     try:
         commit_messages = generate_commit_message(
             api_key=api_key,
@@ -296,7 +288,6 @@ def main():
             print(f"{Fore.RED}Error committing changes: {e}{Style.RESET_ALL}")
     else:
         print(f"{Fore.YELLOW}Commit message not approved. Commit aborted.{Style.RESET_ALL}")
-
 
 if __name__ == "__main__":
     try:
