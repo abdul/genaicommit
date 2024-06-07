@@ -177,10 +177,11 @@ def main():
         print_help()
         sys.exit(0)
 
-    print(f"{Fore.GREEN}Starting generation...{Style.RESET_ALL}")
     if not is_git_repo():
         print(f"{Fore.RED}Error: This script must be run inside a git repository.{Style.RESET_ALL}")
         sys.exit(1)
+
+    print(f"{Fore.GREEN}Starting generation...{Style.RESET_ALL}")
 
     if len(sys.argv) > 1 and sys.argv[1] == 'config' and sys.argv[2] == 'set':
         key, value = sys.argv[3].split('=')
