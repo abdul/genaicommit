@@ -84,3 +84,6 @@ Follow the prompts to approve the commit message and commit the changes.
 ## License
 
 This project is licensed under the MIT License.
+
+#Credits
+This project was inspired by [aicommits](https://www.npmjs.com/package/aicommits), [devmoji](https://www.npmjs.com/package/devmoji), and [commitizen](https://www.npmjs.com/package/commitizen).
